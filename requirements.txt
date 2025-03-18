@@ -1,0 +1,5 @@
+unstructured[all-docs]
+PyPDF2
+pdfminer
+PyMuPDF
+streamlit
