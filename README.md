@@ -6,7 +6,7 @@ This is a **Dockerized Streamlit app** that allows users to **upload a PDF**, ex
 - 📂 **Upload a PDF file**
 - 📝 **Extract text** using:
   - PyMuPDF (`pymupdf`)
-  - Unstructured library (`unstructured`)
+  - Unstructured library (`unstructured`) ---> Extract Table (new feature)
 - 📥 **Download extracted text** as a `.txt` file
 - 🌐 **Streamlit-based web interface**
 - 🐳 **Containerized using Docker for easy deployment**
