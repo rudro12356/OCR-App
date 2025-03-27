@@ -1,6 +1,7 @@
 import streamlit as st
 import pymupdf
 import io
+import pandas as pd
 
 import tempfile
 
@@ -72,20 +73,47 @@ with right_column:
                 tmp_file.flush()
                 tmp_path = tmp_file.name
 
-            # Partition the PDF using the unstructured library
-            elements = partition(tmp_path)
-            # Concatenate extracted elements into one string
-            extraction_text = "\n\n".join([str(el) for el in elements])
+                # Partition the PDF using the unstructured library with hi_res strategy
+                elements = partition(filename=tmp_path, strategy='hi_res', infer_table_structure=True)
 
-        st.success("Text extraction complete!")
+                # Separate text and tables
+                text_elements = [el for el in elements if el.category != "Table"]
+                table_elements = [el for el in elements if el.category == "Table"]
 
-        # Provide a download button for the extracted text
-        st.download_button(
-            label="Download Extracted Text",
-            data=extraction_text,
-            file_name="output.txt",
-            mime="text/plain"
-        )
+                # Combine text elements
+                extracted_text = "\n\n".join(str(el) for el in text_elements)
 
-        # Optional: display a preview of the extracted text
-        st.text_area("Extracted Text Preview", extraction_text, height=300)
+                # Display extracted text
+                if extracted_text:
+                    st.success("Text extraction complete!")
+                    st.download_button(
+                        label="Download Extracted Text",
+                        data=extracted_text,
+                        file_name="output.txt",
+                        mime="text/plain"
+                    )
+                    st.text_area("Extracted Text Preview", extracted_text, height=300)
+                else:
+                    st.warning("No text found in the document.")
+
+                # Display extracted tables
+                if table_elements:
+                    st.success(f"Extracted {len(table_elements)} table(s) from the document.")
+                    for i, table in enumerate(table_elements):
+                        try:
+                            df = pd.read_html(table.metadata.text_as_html, flavor='bs4')[0]
+                            st.write(f"Table {i + 1}:")
+                            st.dataframe(df)
+
+                            # Provide download button for CSV
+                            csv = df.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                label=f"Download Table {i + 1} as CSV",
+                                data=csv,
+                                file_name=f'table_{i + 1}.csv',
+                                mime='text/csv',
+                            )
+                        except Exception as e:
+                            st.error(f"Error processing Table {i + 1}: {e}")
+                else:
+                    st.warning("No tables found in the document.")
