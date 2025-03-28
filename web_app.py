@@ -52,26 +52,33 @@ with right_column:
 
     if uploaded_pdf is not None:
         pdf_bytes = uploaded_pdf.read()
+        extraction_text = ""  # This will hold the extracted text for both methods
 
         if extraction_method == "PyMuPDF":
-            # Use PyMuPDF to extract text
-            doc = pymupdf.open("pdf", pdf_bytes)
-            output_buffer = io.BytesIO()
-            for page in doc:
-                # Get the text from the page, encode it to UTF-8, and add a page delimiter
-                text = page.get_text("text").encode("utf-8")
-                output_buffer.write(text)
-                output_buffer.write(bytes((12,)))  # form feed as page delimiter
-            doc.close()
-            output_buffer.seek(0)
-            extraction_text = output_buffer.read().decode("utf-8")
+            try:
+                st.info("Extracting text using PyMuPDF...")
+                # Open the PDF from bytes using keyword arguments
+                doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+                output_buffer = io.BytesIO()
+                for page in doc:
+                    text = page.get_text("text")
+                    output_buffer.write(text.encode("utf-8"))
+                    output_buffer.write(bytes((12,)))  # form feed as page delimiter
+                doc.close()
+                output_buffer.seek(0)
+                extraction_text = output_buffer.read().decode("utf-8")
+                st.success("Text extraction complete using PyMuPDF!")
+            except Exception as e:
+                st.error(f"Error during PyMuPDF extraction: {e}")
 
         else:  # Unstructured method
-            # Write the uploaded PDF to a temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                tmp_file.write(pdf_bytes)
-                tmp_file.flush()
-                tmp_path = tmp_file.name
+            try:
+                st.info("Extracting text using Unstructured...")
+                # Write the uploaded PDF to a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                    tmp_file.write(pdf_bytes)
+                    tmp_file.flush()
+                    tmp_path = tmp_file.name
 
                 # Partition the PDF using the unstructured library with hi_res strategy
                 elements = partition(filename=tmp_path, strategy='hi_res', infer_table_structure=True)
@@ -81,39 +88,41 @@ with right_column:
                 table_elements = [el for el in elements if el.category == "Table"]
 
                 # Combine text elements
-                extracted_text = "\n\n".join(str(el) for el in text_elements)
+                extraction_text = "\n\n".join(str(el) for el in text_elements)
 
-                # Display extracted text
-                if extracted_text:
-                    st.success("Text extraction complete!")
-                    st.download_button(
-                        label="Download Extracted Text",
-                        data=extracted_text,
-                        file_name="output.txt",
-                        mime="text/plain"
-                    )
-                    st.text_area("Extracted Text Preview", extracted_text, height=300)
+                if extraction_text:
+                    st.success("Text extraction complete using Unstructured!")
                 else:
                     st.warning("No text found in the document.")
 
-                # Display extracted tables
+                # Process and display tables if any
                 if table_elements:
                     st.success(f"Extracted {len(table_elements)} table(s) from the document.")
                     for i, table in enumerate(table_elements):
                         try:
                             df = pd.read_html(table.metadata.text_as_html, flavor='bs4')[0]
-                            st.write(f"Table {i + 1}:")
+                            st.write(f"Table {i+1}:")
                             st.dataframe(df)
-
-                            # Provide download button for CSV
                             csv = df.to_csv(index=False).encode('utf-8')
                             st.download_button(
-                                label=f"Download Table {i + 1} as CSV",
+                                label=f"Download Table {i+1} as CSV",
                                 data=csv,
-                                file_name=f'table_{i + 1}.csv',
+                                file_name=f'table_{i+1}.csv',
                                 mime='text/csv',
                             )
                         except Exception as e:
-                            st.error(f"Error processing Table {i + 1}: {e}")
+                            st.error(f"Error processing Table {i+1}: {e}")
                 else:
                     st.warning("No tables found in the document.")
+            except Exception as e:
+                st.error(f"Error during Unstructured extraction: {e}")
+
+        # Provide a download button and text preview for the extracted text if available
+        if extraction_text:
+            st.download_button(
+                label="Download Extracted Text",
+                data=extraction_text,
+                file_name="output.txt",
+                mime="text/plain"
+            )
+            st.text_area("Extracted Text Preview", extraction_text, height=300)
