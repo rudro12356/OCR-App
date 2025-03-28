@@ -19,12 +19,12 @@ Your friend can **pull and run the Docker container** with the following steps:
 
 ### 1️⃣ **Pull the Docker Image**
 ```bash
-docker pull riokomoo12356/ocr_app:latest
+docker pull riokomoo12356/ocr_app:v2.2
 ```
 
 ### 2️⃣ **Run the Docker Container**
 ```bash
-docker run -p 8501:8501 riokomoo12356/ocr_app:latest
+docker run -p 8501:8501 riokomoo12356/ocr_app:v.2
 ```
 
 ### 3️⃣ **Access the App**
@@ -38,3 +38,7 @@ This app uses:
 	•	unstructured  
 
 These dependencies are installed inside the Docker container.
+
+### Cloud Access
+
+Use this link to access the web version of the app: https://pdfextracto.streamlit.app/
